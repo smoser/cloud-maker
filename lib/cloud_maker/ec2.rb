@@ -6,6 +6,8 @@ module CloudMaker
     attr_accessor :aws_access_key_id
     # Internal: Gets/Sets the AWS::EC2 instance.
     attr_accessor :ec2
+    # Internal: info to get the archiver
+    attr_accessor :archiver_info
 
     # Public: A CloudMaker::Config hash that describes the config properties EC2 relies on.
     CLOUD_MAKER_CONFIG = {
@@ -234,3 +236,5 @@ module CloudMaker
 
   end
 end
+
+# vi: ts=2 expandtab

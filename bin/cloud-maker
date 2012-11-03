@@ -145,8 +145,9 @@ class CloudMakerCLI < Thor
     :default => false,
     :desc => "Answer yes to any confirmation prompts and accept defaults automatically."
   def launch(instance_config_yaml)
+    cloud_maker = get_cloudmaker(options)
     puts "--------------------------------------------------------------------------------".green
-    puts "Launching new EC2 instance"
+    puts "Launching new #{cloud_maker.class} instance"
     puts "--------------------------------------------------------------------------------\n".green
 
     config = build_config(instance_config_yaml, options)
@@ -154,7 +155,6 @@ class CloudMakerCLI < Thor
     print_config_hash(config.to_hash)
 
     if options.yes || yes?("Launch a new EC2 instance with the options above? (y/n)")
-      cloud_maker = get_cloudmaker(options)
 
       instance = cloud_maker.launch(config)
       puts
@@ -273,7 +273,7 @@ class CloudMakerCLI < Thor
 
   def get_cloudmaker(options)
     backend = ENV["CLOUD_MAKER_BACKEND"]
-    if backend.empty? or backend == "ec2"
+    if backend == nil or backend == "s3"
       archiver_info = {
         :aws_access_key_id => options.aws_access_key_id,
         :aws_secret_access_key => options.aws_secret_access_key,
@@ -281,9 +281,14 @@ class CloudMakerCLI < Thor
       cloud_maker = CloudMaker::EC2.new(
         :aws_access_key_id => options.aws_access_key_id,
         :aws_secret_access_key => options.aws_secret_access_key,
+        :archiver_info => {
+           :aws_access_key_id => options.aws_access_key_id,
+           :aws_secret_access_key => options.aws_secret_access_key,
+           :type => "s3",
+        }
       )
-    elsif backend == "lxc"
-      cloud_maker = CloudMaker::LXC.new()
+    elsif backend == "local"
+      cloud_maker = CloudMaker::LXC.new(:archiver_info => { :type => "local"})
     else
       raise RuntimeError.new("invalid backend (CLOUD_MAKER_BACKEND) '#{backend}'")
     end

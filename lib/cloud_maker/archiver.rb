@@ -93,14 +93,10 @@ module CloudMaker
 end
 
 def archive_factory(options, instance_id, path)
-  type = "ec2"
-  if options.has_key?("type")
-    type = options["type"]
-  end
-
-  archclass = S3Archiver
-  if type == "local"
+  if options[:type] == "local"
     archclass = LocalArchiver
+  else
+    archclass = S3Archiver
   end
   # FIXME: how to copy ?
   options[:instance_id] = instance_id

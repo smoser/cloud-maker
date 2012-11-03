@@ -1,5 +1,10 @@
 module CloudMaker
   class LXC
+    # Internal: info to get the archiver
+    attr_accessor :archiver_info
+    # Internal: the data directory for reading/writing
+    attr_accessor :data_dir
+
     # Public: A CloudMaker::Config hash that describes the config properties EC2 relies on.
     CLOUD_MAKER_CONFIG = {
       'cloud-maker' => {
@@ -27,9 +32,14 @@ module CloudMaker
     # Returns a new CloudMaker::LXC instance
     # Raises RuntimeError if any of the required options are not specified
     def initialize(options)
-      if not system('which lxc-create-ephemeral')
-        raise RuntimeError.new("No lxc-create-ephemeral command.  Install lxc?")
+      required_keys = [:archiver_info]
+      unless (required_keys - options.keys).empty?
+        raise RuntimeError.new("Instantiated #{self.class} without required attributes: #{required_keys - options.keys}.")
       end
+      if not system('which lxc-cloud')
+        raise RuntimeError.new("No lxc-cloud.  Install it?")
+      end
+      self.archiver_info = options[:archiver_info]
       self.data_dir = [DATA_DIR, "lxc"].join("/") # FIXME: os.sep?
       FileUtils.mkdir_p(self.data_dir)
     end
