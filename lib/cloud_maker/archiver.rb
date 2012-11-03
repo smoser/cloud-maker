@@ -18,7 +18,7 @@ module CloudMaker
     #           :path                  - (required) The path for top level directory
     #           :instance_id           - (required) The AWS instance ID the archive describes
     #
-    # Returns a new CloudMaker::S3Archiver instance
+    # Returns a new CloudMaker::Archiver instance
     # Raises RuntimeError if any of the required options are not specified
     def initialize(options)
       required_keys = [:instance_id, :path]
@@ -45,7 +45,7 @@ module CloudMaker
       true
     end
 
-    # Public: Retrieves a previously created archive from S3
+    # Public: Retrieves a previously created archive
     #
     # Returns the content of the archive.
     def load_archive
@@ -71,13 +71,13 @@ module CloudMaker
       self.prefix_key('cloud_config.yaml')
     end
 
-		# Internal store a key (filename)
-		def write_key(key, value)
+    # Internal store a key (filename)
+    def write_key(key, value)
       raise RuntimeError.new("write_key not implemented!")
     end
 
-		# Internal read a key
-		def read_key(key)
+    # Internal read a key
+    def read_key(key)
       raise RuntimeError.new("read_key not implemented!")
     end
 
@@ -93,19 +93,19 @@ module CloudMaker
 end
 
 def archive_factory(options, instance_id, path)
-	type = "ec2"
-	if options.has_key?("type")
-		type = options["type"]
-	end
+  type = "ec2"
+  if options.has_key?("type")
+    type = options["type"]
+  end
 
   archclass = S3Archiver
-	if type == "local"
-		archclass = LocalArchiver
-	end
-	# FIXME: how to copy ?
+  if type == "local"
+    archclass = LocalArchiver
+  end
+  # FIXME: how to copy ?
   options[:instance_id] = instance_id
   options[:path] = path
   archclass.new(options)
 end
 
-# vi: ts=2 noexpandtab
+# vi: ts=2 expandtab
