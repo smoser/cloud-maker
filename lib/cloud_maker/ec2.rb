@@ -50,20 +50,21 @@ module CloudMaker
     }
 
     # Public: The name of the tag that will be used to find the name of an s3 bucket for archiving/information retrieval
-    BUCKET_TAG = 's3_archive_bucket'
+    PATH_TAG = 'archive_path'
 
     # Public: Creates a new EC2 instance
     #
     # cloud_maker_config - A CloudMaker::Config object describing the instance
     #                      to be managed.
-    # options            - S3 configuration options
+    # options            - EC2 Credential options
     #                      :aws_access_key_id     - (required) The AWS access key
     #                      :aws_secret_access_key - (required) The AWS secret
+    #                    - :archiver_info         - (required) info to pass to Archiver.archive_factory
     #
     # Returns a new CloudMaker::EC2 instance
     # Raises RuntimeError if any of the required options are not specified
     def initialize(options)
-      required_keys = [:aws_access_key_id, :aws_secret_access_key]
+      required_keys = [:aws_access_key_id, :aws_secret_access_key, :archiver_info]
       unless (required_keys - options.keys).empty?
         raise RuntimeError.new("Instantiated #{self.class} without required attributes: #{required_keys - options.keys}.")
       end
@@ -72,6 +73,8 @@ module CloudMaker
       self.aws_secret_access_key = options[:aws_secret_access_key]
 
       self.ec2 = AWS::EC2.new(:access_key_id => self.aws_access_key_id, :secret_access_key => self.aws_secret_access_key)
+
+      self.archiver_info = options[:archiver_info]
     end
 
     # Public: Fetch archived information about an instance
@@ -79,15 +82,9 @@ module CloudMaker
     # Returns a hash of information about the instance as it was launched
     def info(instance_id)
       instance = find_instance(instance_id)
-      bucket = instance.tags[BUCKET_TAG]
+      path = instance.tags[PATH_TAG]
 
-      archiver = S3Archiver.new(
-        :instance_id => instance_id,
-        :aws_access_key_id => self.aws_access_key_id,
-        :aws_secret_access_key => self.aws_secret_access_key,
-        :bucket_name => bucket
-      )
-
+      archiver = Archiver.archive_factory(self.archiver_info, instance_id, path)
       archiver.load_archive
     end
 
@@ -172,12 +169,8 @@ module CloudMaker
         end
       end
 
-      archiver = S3Archiver.new(
-        :instance_id => instance.id,
-        :aws_access_key_id => self.aws_access_key_id,
-        :aws_secret_access_key => self.aws_secret_access_key,
-        :bucket_name => cloud_maker_config["tags"][BUCKET_TAG]
-      )
+      path = cloud_maker_config["tags"][PATH_TAG]
+      archiver = Archiver.archive_factory(self.archiver_info, instance_id, path)
       archiver.store_archive(cloud_maker_config, self.class.instance_to_hash(instance))
 
       instance
