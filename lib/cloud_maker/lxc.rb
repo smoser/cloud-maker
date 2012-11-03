@@ -8,8 +8,8 @@ module CloudMaker
           'description' => "The name of the lxc container (see lxc-ls)"
         },
         'ephemeral' => {
-					'required' => true,
-					'default' => true
+          'required' => true,
+          'default' => true
         },
       }
     }
@@ -27,11 +27,11 @@ module CloudMaker
     # Returns a new CloudMaker::LXC instance
     # Raises RuntimeError if any of the required options are not specified
     def initialize(options)
-			if not system('which lxc-create-ephemeral')
+      if not system('which lxc-create-ephemeral')
         raise RuntimeError.new("No lxc-create-ephemeral command.  Install lxc?")
-			end
-			self.data_dir = [DATA_DIR, "lxc"].join("/") # FIXME: os.sep?
-			FileUtils.mkdir_p(self.data_dir)
+      end
+      self.data_dir = [DATA_DIR, "lxc"].join("/") # FIXME: os.sep?
+      FileUtils.mkdir_p(self.data_dir)
     end
 
     # Public: Fetch archived information about an instance
@@ -65,23 +65,25 @@ module CloudMaker
         :user_data => user_data
       }
 
-      # generate instance-id
+      # generate instance-id, record start time
+      inst_id = sprintf("i-%08d", (100000 + rand(10**8)).to_s)
+      start = Time.now.to_i
+
       # [lxc change] add '--callback' to 'lxc-start-ephemeral'
-		  # create CALLBACK file (temp file) that will
-			#   populate /var/lib/cloud/data/seed
-      #    includes instance-id as called above
-      #    and user-data
-		  # lxc-start-ephemeral --name container_name --callback $TEMP_D/callback
+      # create CALLBACK file (temp file) that will
+      #   populate /var/lib/cloud/data/seed
+      #    includes instance-id as called above and user-data
+      # lxc-start-ephemeral --name container_name --callback $TEMP_D/callback
       # store some info in the instance yaml
       #   * timestamp
       #   * pid of lxc process
       #   * somehow wait for ip address, get ip address
 
-			# tags is required
-      instance = LXCLocalCloud.create(config, cloud_maker_config['tags'])
+      # tags is required
+      lxc_create(config, cloud_maker_config['tags'])
 
       # dump yaml to self.data_dir/instance-id.yaml
-			# HERE: TODO
+      # HERE: TODO
       File.open([self.data_dir, instance['instance-id']].join("/")YAML::dump(instance)
 
       archiver = LocalArchiver.new(
@@ -129,14 +131,14 @@ module CloudMaker
       end
     end
 
-#		protected
-#			# Protected: get an Archiver object for a given instance
-#		  def get_archiver(instance, cloud_maker_config=None)
+#    protected
+#      # Protected: get an Archiver object for a given instance
+#      def get_archiver(instance, cloud_maker_config=None)
 #        LocalArchiver.new(
 #          :instance_id => instance.id,
 #          :path => cloud_maker_config["tags"][BUCKET_TAG]
 #        )
-#			end
+#      end
 
     class << self
       # Public: Generates a hash of properties from an AWS::EC2 instance
@@ -160,8 +162,12 @@ module CloudMaker
 
   end
 
-  class LXCLocalCloud
-	end
+  def lxc_start(config, cloud_maker_config)
+    # start an instance (lxc-start-ephemeral)
+
+  def lxc_destroy(instance_id,ucontainer_name)
+
+
 end
 
-# vi: ts=2 noexpandtab
+# vi: ts=2 expandtab

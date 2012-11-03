@@ -1,5 +1,5 @@
 module CloudMaker
-  class S3Archiver < Archiver
+  class S3Archiver < CloudMaker::Archiver
 
     # Public: Gets/Sets the AWS access key.
     attr_accessor :aws_secret_access_key
@@ -28,10 +28,12 @@ module CloudMaker
 
       # normalize the path
       toks = normpath(options[:path]).split("/",2)
-      if toks.size == 2:
+      if toks.size == 2
         self.prefix = toks[1]
       else
         self.prefix = ""
+      end
+
       self.bucketname = toks[0]
 
       self.bucket = AWS::S3.new(
