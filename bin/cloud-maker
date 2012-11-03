@@ -157,11 +157,12 @@ class CloudMakerCLI < Thor
     if options.yes || yes?("Launch a new EC2 instance with the options above? (y/n)")
 
       instance = cloud_maker.launch(config)
+      instance_hash = cloud_maker.class.instance_to_hash(instance)
       puts
-      say "Successfully launched new EC2 instance: ".green + instance.id.magenta
+      say "Successfully launched new EC2 instance: ".green + instance[:instance_id].magenta
       puts
       # print_colored_hash(CloudMaker::EC2.instance_to_hash(instance)) # FIXME: why didn't original code use the cloud_maker above
-      print_colored_hash(cloud_maker.instance_to_hash(instance))
+      print_colored_hash(instance_hash)
     else
       say "Launch aborted!".red
     end
@@ -214,7 +215,16 @@ class CloudMakerCLI < Thor
 
   def build_config(instance_config_yaml, options)
     begin
-      config = CloudMaker::Config.from_yaml(instance_config_yaml, 'import_ec2' => true, 'github_token' => @global_options['github_token'])
+      backend = ENV["CLOUD_MAKER_BACKEND"]
+      if backend == nil or backend == "ec2"
+        backend_module = CloudMaker::EC2
+      elsif backend == "lxc"
+        backend_module = CloudMaker::LXC
+      else
+        raise RuntimeError.new("invalid backend (CLOUD_MAKER_BACKEND) '#{backend}'")
+      end
+      config = CloudMaker::Config.from_yaml(instance_config_yaml,
+         'backend_module' => backend_module, 'github_token' => @global_options['github_token'])
     rescue CloudMaker::Config::GitHubContentNotFound => e
       say e.to_s.red
       if @global_options['github_token']
@@ -273,7 +283,7 @@ class CloudMakerCLI < Thor
 
   def get_cloudmaker(options)
     backend = ENV["CLOUD_MAKER_BACKEND"]
-    if backend == nil or backend == "s3"
+    if backend == nil or backend == "ec2"
       archiver_info = {
         :aws_access_key_id => options.aws_access_key_id,
         :aws_secret_access_key => options.aws_secret_access_key,
@@ -287,7 +297,7 @@ class CloudMakerCLI < Thor
            :type => "s3",
         }
       )
-    elsif backend == "local"
+    elsif backend == "lxc"
       cloud_maker = CloudMaker::LXC.new(:archiver_info => { :type => "local"})
     else
       raise RuntimeError.new("invalid backend (CLOUD_MAKER_BACKEND) '#{backend}'")

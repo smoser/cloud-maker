@@ -1,4 +1,8 @@
 module CloudMaker
+  def foo()
+    puts "HELLO"
+  end
+
   class LXC
     # Internal: info to get the archiver
     attr_accessor :archiver_info
@@ -10,10 +14,10 @@ module CloudMaker
       'cloud-maker' => {
         'container_name' => {
           'required' => true,
-          'description' => "The name of the lxc container (see lxc-ls)"
+          'description' => "The name of the lxc source container (see lxc-ls)"
         },
         'ephemeral' => {
-          'required' => true,
+          'required' => false,
           'default' => true
         },
       }
@@ -68,39 +72,51 @@ module CloudMaker
     # Returns an AWS::EC2 object for the launched instance.
     def launch(cloud_maker_config)
       user_data = cloud_maker_config.to_user_data
-
       config = {
         :container_name => cloud_maker_config['container_name'],
         :ephemeral => cloud_maker_config['ephemeral'],
+        :key_name => cloud_maker_config['key_pair'],
         :user_data => user_data
       }
 
-      # generate instance-id, record start time
-      inst_id = sprintf("i-%08d", (100000 + rand(10**8)).to_s)
-      start = Time.now.to_i
+      # FIXME: use a temp file
+      user_data_file = "/tmp/temp-user-data"
+      fp = open(user_data_file,"w")
+      fp.write(user_data)
+      fp.close()
 
-      # [lxc change] add '--callback' to 'lxc-start-ephemeral'
-      # create CALLBACK file (temp file) that will
-      #   populate /var/lib/cloud/data/seed
-      #    includes instance-id as called above and user-data
-      # lxc-start-ephemeral --name container_name --callback $TEMP_D/callback
-      # store some info in the instance yaml
-      #   * timestamp
-      #   * pid of lxc process
-      #   * somehow wait for ip address, get ip address
+      cmd = "lxc-cloud start"
+      if cloud_maker_config['key_pair']
+        cmd += " --key=" + cloud_maker_config['key_pair']
+      end
+      cmd += " --user-data-file=\"#{user_data_file}\""
+      cmd += " #{cloud_maker_config['container_name']}"
 
-      # tags is required
-      lxc_create(config, cloud_maker_config['tags'])
+      start_time = Time.now.to_i
+      puts cmd
+      output = `#{cmd}`
+      (instance_id, state, ip) = output.split("\t")
+      File.unlink(user_data_file)
 
+      instance = {
+        :instance_id => instance_id,
+        :start => start_time,
+        :path => cloud_maker_config["tags"][PATH_TAG],
+        :ip_address => ip,
+        :key_name => cloud_maker_config['key_pair'],
+        :container_name => cloud_maker_config['container_name'],
+        :tags => cloud_maker_config["tags"]
+      }
+      
       # dump yaml to self.data_dir/instance-id.yaml
-      # HERE: TODO
-      File.open([self.data_dir, instance['instance-id']].join("/"))
+      fp = File.open([self.data_dir, instance[:instance_id] + ".yaml"].join("/"), "w")
+      fp.write(YAML::dump(instance))
 
       archiver = LocalArchiver.new(
-        :instance_id => instance.id,
-        :path => cloud_maker_config["tags"][BUCKET_TAG]
+        :instance_id => instance[:instance_id],
+        :path => instance[:path],
       )
-      archiver.store_archive(cloud_maker_config, self.class.instance_to_hash(instance))
+      archiver.store_archive(cloud_maker_config, instance)
 
       instance
     end
@@ -126,59 +142,15 @@ module CloudMaker
       instance
     end
 
-
-    # Internal: Find the region object for a given availability zone. Currently works
-    # based on amazon naming conventions and will break if they change.
-    #
-    # Returns an AWS::EC2::Region
-    # Raises a RuntimeError if the region doesn't exist
-    def find_region(availability_zone)
-      region_name = availability_zone.gsub(/(\d)\w$/, '\1')
-      if ec2.regions[region_name].exists?
-        ec2.regions[region_name]
-      else
-        raise RuntimeError.new("The region #{region_name} doesn't exist - region name generated from availability_zone: #{availability_zone}.")
-      end
-    end
-
-#    protected
-#      # Protected: get an Archiver object for a given instance
-#      def get_archiver(instance, cloud_maker_config=None)
-#        LocalArchiver.new(
-#          :instance_id => instance.id,
-#          :path => cloud_maker_config["tags"][BUCKET_TAG]
-#        )
-#      end
-
     class << self
       # Public: Generates a hash of properties from an AWS::EC2 instance
       #
       # Returns a hash of properties for the instance.
       def instance_to_hash(instance)
-        {
-          :instance_id => instance.id,
-          :ami => instance.image_id,
-          :api_termination_disabled => instance.api_termination_disabled?,
-          :dns_name => instance.dns_name,
-          :ip_address => instance.ip_address,
-          :private_ip_address => instance.private_ip_address,
-          :key_name => instance.key_name,
-          :owner_id => instance.owner_id,
-          :status => instance.status,
-          :tags => instance.tags.inject({}) {|hash, tag| hash[tag.first] = tag.last;hash}
-        }
+        instance
       end
     end
-
   end
-
-  def lxc_start(config, cloud_maker_config)
-    # start an instance (lxc-start-ephemeral)
-  end
-
-  def lxc_destroy(instance_id,ucontainer_name)
-  end
-
 
 end
 

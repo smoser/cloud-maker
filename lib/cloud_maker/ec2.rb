@@ -172,7 +172,7 @@ module CloudMaker
       end
 
       path = cloud_maker_config["tags"][PATH_TAG]
-      archiver = Archiver.archive_factory(self.archiver_info, instance_id, path)
+      archiver = Archiver.archive_factory(self.archiver_info, instance.instance_id, path)
       archiver.store_archive(cloud_maker_config, self.class.instance_to_hash(instance))
 
       instance

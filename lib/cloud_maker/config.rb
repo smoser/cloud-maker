@@ -84,8 +84,8 @@ module CloudMaker
     # extra_options   - Options that describe the config as opposed to being part
     #                   of the config.
     #   'config_path' - The path the config was loaded from. Used for archival purposes.
-    #   'import_ec2'  - CloudMaker::EC2 defines properties it relies on, if this value
-    #                   is true then we pull those property definitions in.
+    #   'backend_module' - The class to take the CLOUD_MAKER_CONFIG from, if this is 
+    #                      set, then we pull those property definitions in.
     #
     # Returns a CloudMaker object
     def initialize(cloud_config, extra_options={})
@@ -98,7 +98,8 @@ module CloudMaker
       self.cloud_config = cloud_config
 
       # FIXME: needs to handle generic config, not just EC2::CLOUD_MAKER_CONFIG
-      self.import(self.class.new(EC2::CLOUD_MAKER_CONFIG, 'config_path' => "EC2")) if (extra_options['import_ec2'])
+      self.import(self.class.new(extra_options['backend_type']::CLOUD_MAKER_CONFIG,
+                  'config_path' => "EC2")) if (extra_options['backend_type'])
 
       # It's important here that reverse duplicates the imports array as executing the import will
       # add the imported configs imports to the list and we do NOT want to reimport those as well.
