@@ -84,7 +84,7 @@ module CloudMaker
 
       # dump yaml to self.data_dir/instance-id.yaml
       # HERE: TODO
-      File.open([self.data_dir, instance['instance-id']].join("/")YAML::dump(instance)
+      File.open([self.data_dir, instance['instance-id']].join("/"))
 
       archiver = LocalArchiver.new(
         :instance_id => instance.id,
@@ -164,8 +164,10 @@ module CloudMaker
 
   def lxc_start(config, cloud_maker_config)
     # start an instance (lxc-start-ephemeral)
+  end
 
   def lxc_destroy(instance_id,ucontainer_name)
+  end
 
 
 end
