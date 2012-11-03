@@ -97,6 +97,7 @@ module CloudMaker
       self.imports = extract_imports!(cloud_config)
       self.cloud_config = cloud_config
 
+      # FIXME: needs to handle generic config, not just EC2::CLOUD_MAKER_CONFIG
       self.import(self.class.new(EC2::CLOUD_MAKER_CONFIG, 'config_path' => "EC2")) if (extra_options['import_ec2'])
 
       # It's important here that reverse duplicates the imports array as executing the import will
