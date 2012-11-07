@@ -1,8 +1,4 @@
 module CloudMaker
-  def foo()
-    puts "HELLO"
-  end
-
   class LXC
     # Internal: info to get the archiver
     attr_accessor :archiver_info
